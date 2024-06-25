@@ -2,42 +2,49 @@
 session_start();
 include 'koneksi.php';
 
+// Cek apakah pengguna sudah login
 if (!isset($_SESSION['username'])) {
     header("Location: login.php");
     exit();
 }
 
-$username = $_SESSION['username'];
+// Mendapatkan nilai bonus saat ini dari database
+$sql = "SELECT * FROM ketentuan_bonus WHERE id = 1"; 
+$result = $conn->query($sql);
+$current_bonus = $result->fetch_assoc();
 
-// Query untuk mendapatkan informasi pengguna dari database
-$sql = "SELECT * FROM admin WHERE username = ?";
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("s", $username);
-$stmt->execute();
-$result = $stmt->get_result();
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $bonus_request = filter_input(INPUT_POST, 'bonus_request', FILTER_VALIDATE_INT);
+    $bonus_non_request = filter_input(INPUT_POST, 'bonus_non_request', FILTER_VALIDATE_INT);
 
-if ($result->num_rows > 0) {
-    $user = $result->fetch_assoc();
-} else {
-    echo "Data pengguna tidak ditemukan.";
+    // Validasi input
+    if ($bonus_request === false || $bonus_non_request === false) {
+        $_SESSION['error'] = "Nilai bonus harus berupa angka valid.";
+    } else {
+        // Mengupdate ketentuan bonus di database
+        $updateSql = "UPDATE ketentuan_bonus SET bonus_request = ?, bonus_non_request = ? WHERE id = 1";
+        $stmt = $conn->prepare($updateSql);
+        $stmt->bind_param("ii", $bonus_request, $bonus_non_request);
+
+        if ($stmt->execute()) {
+            $_SESSION['message'] = "Ketentuan bonus berhasil diperbarui.";
+        } else {
+            $_SESSION['error'] = "Terjadi kesalahan saat memperbarui ketentuan bonus: " . $stmt->error;
+        }
+    }
+
+    header("Location: edit_ketentuan_bonus.php");
     exit();
 }
-
-$stmt->close();
-$conn->close();
-// Ambil nama file saat ini
 $current_page = basename($_SERVER['PHP_SELF']);
 ?>
-
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Profil</title>
+    <title>Edit Ketentuan Bonus</title>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" integrity="sha512-ZRyl+fF4g4g/Y8+2jXIMmRX8cKcgDDA9fF9GWpIq0thdO8+jGxEN7JHuZjw+6kd8kDQ2BRbD7KwklYXSR2T0ag==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-
 </head>
 <body>
 <nav class="navbar navbar-default">
@@ -67,28 +74,41 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </div>
     </div>
 </nav>
-
     <div class="container">
-        <div class="row">
-            <div class="col-md-6 col-md-offset-3">
-                <div class="panel panel-default">
-                    <div class="panel-heading">
-                        <h3 class="panel-title">Profil Pengguna</h3>
-                    </div>
-                    <div class="panel-body">
-                        <!-- <div class="text-center">
-                            <img src="path_to_profile_picture/<?php echo $user['profile_picture']; ?>" class="img-circle" alt="Profil">
-                        </div> -->
-                        <br>
-                        <p><strong>Username:</strong> <?php echo $user['username']; ?></p>
-                        <p><strong>Nama Lengkap:</strong> <?php echo $user['nama_lengkap']; ?></p>
-                        <p><strong>Role:</strong> <?php echo $user['role']; ?></p>
-                    </div>
-                </div>
+        <h2>Edit Ketentuan Bonus</h2>
+
+        <?php if (isset($_SESSION['message'])): ?>
+            <div class="alert alert-success">
+                <?php 
+                echo $_SESSION['message']; 
+                unset($_SESSION['message']); 
+                ?>
             </div>
-        </div>
+        <?php endif; ?>
+
+        <?php if (isset($_SESSION['error'])): ?>
+            <div class="alert alert-danger">
+                <?php 
+                echo $_SESSION['error']; 
+                unset($_SESSION['error']); 
+                ?>
+            </div>
+        <?php endif; ?>
+
+        <form method="post" action="edit_ketentuan_bonus.php">
+            <div class="form-group">
+                <label for="bonus_request">Jumlah Facial Request:</label>
+                <input type="number" class="form-control" id="bonus_request" name="bonus_request" value="<?php echo htmlspecialchars($current_bonus['bonus_request']); ?>" required>
+            </div>
+            <div class="form-group">
+                <label for="bonus_non_request">Jumlah Facial Non-Request:</label>
+                <input type="number" class="form-control" id="bonus_non_request" name="bonus_non_request" value="<?php echo htmlspecialchars($current_bonus['bonus_non_request']); ?>" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Simpan</button>
+        </form>
     </div>
 
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
 </body>
 </html>

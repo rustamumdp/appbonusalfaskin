@@ -1,50 +1,67 @@
-<?php
-include 'koneksi.php';
-session_start();
-
-if (!isset($_SESSION['username']) || $_SESSION['role'] != 'karyawan') {
-    header("Location: login.php");
-    exit();
-}
-
-$username = $_SESSION['username'];
-
-$sql = "SELECT k.nip, k.nama_karyawan, j.nama_jabatan, SUM(g.bonus_request + g.bonus_non_request) as total_bonus
-        FROM karyawan k
-        JOIN jabatan j ON k.id_jabatan = j.id_jabatan
-        JOIN master_gaji g ON k.nip = g.nip
-        WHERE k.nip = ?
-        GROUP BY k.nip, k.nama_karyawan, j.nama_jabatan";
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("s", $username);
-$stmt->execute();
-$result = $stmt->get_result();
-$karyawan = $result->fetch_assoc();
-
-$stmt->close();
-$conn->close();
-?>
-
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Home Karyawan</title>
-    <link href="https://stackpath.bootstrapcdn.com/bootstrap/5.1.3/css/bootstrap.min.css" rel="stylesheet">
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Home</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+    <!-- Font Awesome CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.0/css/all.min.css">
+    <!-- CSS custom -->
+    <style>
+        /* Membuat menu navbar tidak muncul di layar kecil */
+        .navbar-nav > li {
+            display: none;
+        }
+        /* Membuat menu navbar muncul di layar lebih besar dari 768px */
+        @media (min-width: 768px) {
+            .navbar-nav > li {
+                display: block;
+            }
+        }
+    </style>
 </head>
 <body>
-    <div class="container mt-5">
-        <div class="card">
-            <div class="card-body">
-                <h2 class="card-title">Selamat datang, <?php echo isset($karyawan['nama_karyawan']) ? $karyawan['nama_karyawan'] : 'User'; ?>!</h2>
-                <p class="card-text">Jabatan: <?php echo isset($karyawan['nama_jabatan']) ? $karyawan['nama_jabatan'] : 'Tidak ditemukan'; ?></p>
-                <p class="card-text">Total Bonus: Rp <?php echo isset($karyawan['total_bonus']) ? number_format($karyawan['total_bonus'], 2) : '0.00'; ?></p>
-                <a href="logout.php" class="btn btn-primary">Logout</a>
+    <nav class="navbar navbar-default">
+        <div class="container-fluid">
+            <div class="navbar-header">
+                <!-- Tombol untuk membuka/menutup navbar di layar kecil -->
+                <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+                    <!-- Label tombol -->
+                    <span class="sr-only">Toggle navigation</span>
+                    <!-- Ikon hamburger -->
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <!-- Judul navbar -->
+                <a class="navbar-brand" href="#">Aplikasi Perhitungan Bonus Karyawan Alfa Skin Care</a>
+            </div>
+            <!-- Bagian isi navbar -->
+            <div id="navbar" class="navbar-collapse collapse">
+                    <ul class="nav navbar-nav">
+                    <li class="active"><a href="karyawan_home.php"><i class="fas fa-home"></i> Home</a></li>
+                    <li class="active"><a href="k_profil.php"><span class="glyphicon glyphicon-user"></span> Profil</a></li>
+                    <li class="active"><a href="k_laporan_bonus.php"><i class="fas fa-file-invoice"></i> Lihat Bonus</a></li>
+                    <li class="active"><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+                </ul>
             </div>
         </div>
+    </nav>
+    <!-- Konten utama -->
+    <div class="container">
+    <div class="jumbotron" style="background-color: #f8f9fa;">
+        <h1 class="display-4" style="font-size: 2.5rem;">Selamat Datang di Aplikasi Perhitungan Bonus Karyawan</h1>
+        <p class="lead" style="font-size: 1.25rem;">Klinik Kecantikan Alfa Skin Care Palembang</p>
+        <hr class="my-4">
+        <p style="font-size: 1.1rem;">Silakan pilih menu di atas untuk memulai.</p>
     </div>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/5.1.3/js/bootstrap.bundle.min.js"></script>
+</div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-1.12.4.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
 </body>
 </html>

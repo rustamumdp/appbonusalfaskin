@@ -12,14 +12,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $stmt->bind_param("ssss", $username, $password, $nama_lengkap, $role);
 
     if ($stmt->execute()) {
-        echo "<script>alert('Registrasi berhasil! Silakan login.'); window.location='login.php';</script>";
-        exit(); // Keluar dari script setelah mengarahkan ke halaman login
+        // Registrasi berhasil
+        $stmt->close();
+        $conn->close();
+
+        // Arahkan ke halaman login.php setelah registrasi berhasil
+        header("Location: login.php");
+        exit(); // Keluar dari script setelah mengarahkan ke halaman login.php
     } else {
+        // Registrasi gagal
         echo "<script>alert('Registrasi gagal! Coba lagi.');</script>";
     }
-
-    $stmt->close();
-    $conn->close();
 }
 ?>
 

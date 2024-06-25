@@ -43,7 +43,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Login - Aplikasi Bonus Alfa Skin Care</title>
+    <title>Login - Aplikasi Perhitungan Bonus Karyawan Alfa Skin Care</title>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/5.1.3/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body {
@@ -97,7 +97,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <body>
     <div class="login-panel">
         <img src="assets/img/logo3.png" class="img-circle" alt="Logo">
-        <h3>Bonus Karyawan Alfa Skin Care</h3>
+        <h3>Aplikasi Perhitungan Bonus Karyawan Klinik Kecantikan Alfa Skin Care Palembang</h3>
         <form method="post" action="">
             <div class="mb-3 text-start">
                 <label for="username" class="form-label">Username:</label>
