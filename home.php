@@ -16,18 +16,9 @@ $current_page = basename($_SERVER['PHP_SELF']);
     <!-- Font Awesome CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.0/css/all.min.css">
     <!-- CSS custom -->
-    <style>
-        /* Membuat menu navbar tidak muncul di layar kecil */
-        .navbar-nav > li {
-            display: none;
-        }
-        /* Membuat menu navbar muncul di layar lebih besar dari 768px */
-        @media (min-width: 768px) {
-            .navbar-nav > li {
-                display: block;
-            }
-        }
-    </style>
+    <!-- Link ke file CSS custom Anda -->
+    <link rel="stylesheet" href="assets/css/style.css"> <!-- Sesuaikan path dengan lokasi style.css -->
+    
 </head>
 <body>
 <nav class="navbar navbar-default">

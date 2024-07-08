@@ -2,15 +2,11 @@
 session_start();
 include 'koneksi.php';
 
-if (!isset($_SESSION['username'])) {
-    header("Location: login.php");
-    exit();
-}
 
 $username = $_SESSION['username'];
 
 // Query untuk mendapatkan informasi pengguna dari database
-$sql = "SELECT * FROM admin WHERE username = ?";
+$sql = "SELECT * FROM akun_pengguna WHERE username = ?";
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("s", $username);
 $stmt->execute();
@@ -37,7 +33,8 @@ $current_page = basename($_SERVER['PHP_SELF']);
     <title>Profil</title>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" integrity="sha512-ZRyl+fF4g4g/Y8+2jXIMmRX8cKcgDDA9fF9GWpIq0thdO8+jGxEN7JHuZjw+6kd8kDQ2BRbD7KwklYXSR2T0ag==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-
+    <!-- Link ke file CSS custom Anda -->
+    <link rel="stylesheet" href="assets/css/style.css"> <!-- Sesuaikan path dengan lokasi style.css -->
 </head>
 <body>
 <nav class="navbar navbar-default">

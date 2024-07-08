@@ -2,12 +2,6 @@
 session_start();
 include 'koneksi.php';
 
-// Cek apakah pengguna sudah login
-if (!isset($_SESSION['username'])) {
-    header("Location: login.php");
-    exit();
-}
-
 // Mendapatkan nilai bonus saat ini dari database
 $sql = "SELECT * FROM ketentuan_bonus WHERE id = 1"; 
 $result = $conn->query($sql);
@@ -45,6 +39,8 @@ $current_page = basename($_SERVER['PHP_SELF']);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edit Ketentuan Bonus</title>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+    <!-- Link ke file CSS custom Anda -->
+    <link rel="stylesheet" href="assets/css/style.css"> <!-- Sesuaikan path dengan lokasi style.css -->
 </head>
 <body>
 <nav class="navbar navbar-default">

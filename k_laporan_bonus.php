@@ -1,137 +1,117 @@
 <?php
-include 'koneksi.php';
 session_start();
+include 'koneksi.php';
 
-if (!isset($_SESSION['username'])) {
-    header("Location: login.php");
-    exit();
+// Cek apakah koneksi database berhasil
+if ($conn->connect_error) {
+    die("Koneksi gagal: " . $conn->connect_error);
 }
 
-$tanggal_mulai = isset($_GET['tanggal_mulai']) ? $_GET['tanggal_mulai'] : '';
-$tanggal_selesai = isset($_GET['tanggal_selesai']) ? $_GET['tanggal_selesai'] : '';
-$nama_karyawan = isset($_GET['nama_karyawan']) ? $_GET['nama_karyawan'] : '';
+// Ambil ketentuan bonus dari database
+$sql_bonus = "SELECT bonus_request, bonus_non_request FROM ketentuan_bonus WHERE id = 1";
+$result_bonus = $conn->query($sql_bonus);
+$ketentuan_bonus = $result_bonus ? $result_bonus->fetch_assoc() : ['bonus_request' => 0, 'bonus_non_request' => 0];
 
-// Mapping gaji pokok berdasarkan jabatan
-$gaji_pokok_mapping = [
-    'Beautician' => 1500000,
-    'HRD' => 5000000,
-    'Customer Service' => 1500000
-];
+// Ambil data karyawan jika ada parameter NIP dan tanggal
+$nip = filter_input(INPUT_GET, 'nip', FILTER_SANITIZE_STRING);
+$tanggal_dari = filter_input(INPUT_GET, 'tanggal_dari', FILTER_SANITIZE_STRING);
+$tanggal_sampai = filter_input(INPUT_GET, 'tanggal_sampai', FILTER_SANITIZE_STRING);
+$karyawan = null;
+$transaksi = null;
+$gaji_pokok = null;
 
-// Query untuk mengambil data dari database
-$sql = "SELECT k.nip, k.nama_karyawan, k.jabatan, g.tanggal, g.bonus_request, g.bonus_non_request
-        FROM karyawan k
-        JOIN master_gaji g ON k.nip = g.nip";
+if ($nip && $tanggal_dari && $tanggal_sampai) {
+    // Persiapkan dan eksekusi statement untuk mengambil data karyawan
+    $sql_karyawan = "SELECT nip, nama_karyawan, gaji_pokok FROM karyawan WHERE nip = ?";
+    if ($stmt_karyawan = $conn->prepare($sql_karyawan)) {
+        $stmt_karyawan->bind_param("s", $nip);
+        $stmt_karyawan->execute();
+        $result_karyawan = $stmt_karyawan->get_result();
+        $karyawan = $result_karyawan->fetch_assoc();
+        $stmt_karyawan->close();
+    }
 
-// Menambahkan kondisi query jika ada filter
-$conditions = [];
-if ($tanggal_mulai && $tanggal_selesai) {
-    $conditions[] = "g.tanggal BETWEEN '$tanggal_mulai' AND '$tanggal_selesai'";
+    // // Ambil gaji pokok dari tabel karyawan
+    // $sql_gaji_pokok = "SELECT gaji_pokok FROM karyawan WHERE nip = ?";
+    // if ($stmt_gaji_pokok = $conn->prepare($sql_gaji_pokok)) {
+    //     $stmt_gaji_pokok->bind_param("s", $nip);
+    //     $stmt_gaji_pokok->execute();
+    //     $result_gaji_pokok = $stmt_gaji_pokok->get_result();
+    //     $gaji_pokok = $result_gaji_pokok->fetch_assoc()['gaji_pokok'];
+    //     $stmt_gaji_pokok->close();
+    // }
+    // Ambil gaji pokok dari tabel karyawan
+$sql_gaji_pokok = "SELECT gaji_pokok FROM karyawan WHERE nip = ?";
+if ($stmt_gaji_pokok = $conn->prepare($sql_gaji_pokok)) {
+    $stmt_gaji_pokok->bind_param("s", $nip);
+    $stmt_gaji_pokok->execute();
+    $result_gaji_pokok = $stmt_gaji_pokok->get_result();
+    $gaji_pokok_row = $result_gaji_pokok->fetch_assoc();
+    $gaji_pokok = $gaji_pokok_row ? $gaji_pokok_row['gaji_pokok'] : 0; // Pengecekan disini
+    $stmt_gaji_pokok->close();
+} else {
+    $gaji_pokok = 0; // Default jika statement gagal
 }
-if ($nama_karyawan) {
-    $conditions[] = "k.nama_karyawan LIKE '%$nama_karyawan%'";
-}
 
-if (count($conditions) > 0) {
-    $sql .= " WHERE " . implode(" AND ", $conditions);
-}
 
-$result = $conn->query($sql);
-$data = [];
-$monthly_gaji_pokok = []; // Array untuk menyimpan gaji pokok per bulan
-$total_gaji_keseluruhan = 0; // Variabel untuk menyimpan total gaji keseluruhan
-
-if ($result->num_rows > 0) {
-    while ($row = $result->fetch_assoc()) {
-        $tanggal = new DateTime($row['tanggal']);
-        $month = $tanggal->format('Y-m');
-        $nip = $row['nip'];
-
-        // Inisialisasi gaji pokok bulanan jika belum diatur
-        if (!isset($monthly_gaji_pokok[$nip][$month])) {
-            // Tentukan gaji pokok berdasarkan jabatan
-            $monthly_gaji_pokok[$nip][$month] = isset($gaji_pokok_mapping[$row['jabatan']]) ? $gaji_pokok_mapping[$row['jabatan']] : 0;
+    // Persiapkan dan eksekusi statement untuk mengambil data transaksi bonus
+    $sql_transaksi = "SELECT 
+                        tanggal,
+                        nama_pasien,
+                        SUM(CASE WHEN jenis_facial = 'request' THEN 1 ELSE 0 END) AS bonus_request,
+                        SUM(CASE WHEN jenis_facial = 'non_request' THEN 1 ELSE 0 END) AS bonus_non_request
+                      FROM transaksi_bonus
+                      WHERE nip = ? AND tanggal BETWEEN ? AND ?
+                      GROUP BY tanggal, nama_pasien";
+    if ($stmt_transaksi = $conn->prepare($sql_transaksi)) {
+        $stmt_transaksi->bind_param("sss", $nip, $tanggal_dari, $tanggal_sampai);
+        $stmt_transaksi->execute();
+        $result_transaksi = $stmt_transaksi->get_result();
+        $transaksi = [];
+        while ($row = $result_transaksi->fetch_assoc()) {
+            $row['total_facial'] = $row['bonus_request'] + $row['bonus_non_request']; // Hitung total facial
+            $transaksi[] = $row;
         }
-
-        // Menghitung total treatment
-        $total_treatment = $row['bonus_request'] + $row['bonus_non_request'];
-
-        // Menghitung bonus request dan non-request
-        $bonus_request = $row['bonus_request'] * 20000;
-        $bonus_non_request = $row['bonus_non_request'] * 15000;
-
-        // Menghitung total gaji
-        $total_gaji = $monthly_gaji_pokok[$nip][$month] + $bonus_request + $bonus_non_request;
-
-        // Menyimpan data dalam array untuk ditampilkan di tabel
-        $row['gaji_pokok'] = 'Rp ' . number_format($monthly_gaji_pokok[$nip][$month], 0, ',', '.');
-        $row['bonus_request_amount'] = 'Rp ' . number_format($bonus_request, 0, ',', '.');
-        $row['bonus_non_request_amount'] = 'Rp ' . number_format($bonus_non_request, 0, ',', '.');
-        $row['total_treatment'] = $total_treatment;
-        $row['total_gaji'] = 'Rp ' . number_format($total_gaji, 0, ',', '.');
-
-        // Tambahkan ke array data
-        $data[] = $row;
-
-        // Akumulasi total gaji keseluruhan
-        $total_gaji_keseluruhan += $total_gaji;
+        $stmt_transaksi->close();
     }
 }
+
+// Ambil daftar semua karyawan
+$sql = "SELECT nip, nama_karyawan FROM karyawan";
+$result = $conn->query($sql);
+$karyawanList = [];
+if ($result->num_rows > 0) {
+    while ($row = $result->fetch_assoc()) {
+        $karyawanList[] = $row;
+    }
+}
+$current_page = basename($_SERVER['PHP_SELF']);
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Laporan Bonus Karyawan</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Hitung Bonus Karyawan</title>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.0/css/all.min.css">
+    <!-- Link ke file CSS custom Anda -->
+    <link rel="stylesheet" href="assets/css/style.css"> <!-- Sesuaikan path dengan lokasi style.css -->
     <style>
-        .rekomendasi-container {
-            position: relative;
-        }
-        .rekomendasi-item {
-            background-color: beige;
-            border: 1px solid #ccc;
-            padding: 10px;
-            cursor: pointer;
-            margin-bottom: 5px;
-        }
-        .rekomendasi-item:hover {
-            background-color: greenyellow;
-        }
-        .rekomendasi-box {
-            position: absolute;
-            width: 100%;
-            max-height: 150px;
-            overflow-y: auto;
-            z-index: 1000;
-            border: 1px solid #ccc;
-            background-color: #fff;
-        }
         @media print {
-            .page-header {
-                text-align: center;
-                margin-bottom: 20px;
+            body * {
+                visibility: hidden;
             }
-            .page-header img {
-                height: 50px;
-                vertical-align: middle;
-                margin-right: 10px;
+            #printableArea, #printableArea * {
+                visibility: visible;
             }
-            .page-header h1 {
-                display: inline-block;
-                font-size: 24px;
-                margin: 0;
-                vertical-align: middle;
+            #printableArea {
+                position: absolute;
+                left: 0;
+                top: 0;
             }
-            .panel-body {
-                margin-bottom: 20px;
-            }
-            .btn {
-                display: none;
+            .navbar, .btn {
+                display: none !important;
             }
         }
     </style>
@@ -150,124 +130,118 @@ if ($result->num_rows > 0) {
         </div>
         <div id="navbar" class="navbar-collapse collapse">
             <ul class="nav navbar-nav">
-                <li class="active"><a href="karyawan_home.php"><i class="fas fa-home"></i> Home</a></li>
-                <li class="active"><a href="k_profil.php"><i class="fas fa-user-plus"></i> Profil</a></li>
-                <li class="active"><a href="k_laporan_bonus.php"><i class="fas fa-file-invoice"></i> Lihat Bonus</a></li>
-                <li class="active"><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+                <!-- Menu Items -->
+                <li class="<?php echo ($current_page == 'karyawan_home.php') ? 'active' : ''; ?>"><a href="karyawan_home.php"><i class="fas fa-home"></i> Home</a></li>
+                <li class="<?php echo ($current_page == 'k_laporan_bonus.php') ? 'active' : ''; ?>"><a href="k_laporan_bonus.php"><i class="fas fa-file-invoice"></i>Lihat Laporan Bonus</a></li>
+                <li class="<?php echo ($current_page == 'k_profil.php') ? 'active' : ''; ?>"><a href="k_profil.php"><i class="fas fa-user"></i> Profil</a></li>
+                <li><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
             </ul>
         </div>
     </div>
 </nav>
-
 <div class="container">
     <div class="col-md-12">
         <div class="panel panel-primary">
             <div class="panel-heading">
-                <h3 class="panel-title">Laporan Bonus Karyawan</h3>
+                <h3 class="panel-title">Lihat Laporan Bonus Karyawan</h3>
             </div>
             <div class="panel-body">
-                <form method="get" action="k_laporan_bonus.php">
-                    <div class="form-group rekomendasi-container">
-                        <label for="nama_karyawan">Nama Karyawan:</label>
-                        <input type="text" class="form-control" id="nama_karyawan" name="nama_karyawan" value="<?php echo $nama_karyawan; ?>">
-                        <div id="rekomendasi-nama" class="rekomendasi-box"></div>
+                <form method="get" action="">
+                    <div class="form-group">
+                        <label for="nip">Nama Karyawan:</label>
+                        <select class="form-control" id="nip" name="nip" required>
+                            <option value="">Pilih Karyawan</option>
+                            <?php foreach ($karyawanList as $k): ?>
+                                <option value="<?php echo $k['nip']; ?>" <?php echo ($k['nip'] == $nip) ? 'selected' : ''; ?>>
+                                    <?php echo $k['nama_karyawan']; ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                     <div class="form-group">
-                        <label for="tanggal_mulai">Tanggal Mulai:</label>
-                        <input type="date" class="form-control" id="tanggal_mulai" name="tanggal_mulai" value="<?php echo $tanggal_mulai; ?>">
+                        <label for="tanggal_dari">Dari Tanggal:</label>
+                        <input type="date" class="form-control" id="tanggal_dari" name="tanggal_dari" value="<?php echo htmlspecialchars($tanggal_dari); ?>" required>
                     </div>
                     <div class="form-group">
-                        <label for="tanggal_selesai">Tanggal Selesai:</label>
-                        <input type="date" class="form-control" id="tanggal_selesai" name="tanggal_selesai" value="<?php echo $tanggal_selesai; ?>">
+                        <label for="tanggal_sampai">Sampai Tanggal:</label>
+                        <input type="date" class="form-control" id="tanggal_sampai" name="tanggal_sampai" value="<?php echo htmlspecialchars($tanggal_sampai); ?>" required>
                     </div>
-                    <button type="submit" class="btn btn-primary">Tampilkan Laporan</button>
-                    <!-- <button type="button" class="btn btn-success" onclick="window.print();">Cetak Laporan</button> -->
+                    <button type="submit" class="btn btn-primary">Tampilkan</button>
+                    <a href="k_laporan_bonus.php" class="btn btn-default">Reset</a>
+                   
                 </form>
             </div>
-            <?php if ($result->num_rows > 0): ?>
-                <div class="panel-body">
-                    <h4>Hasil Laporan:</h4>
-                    <div class="table-responsive">
-                        <table class="table table-bordered">
-                            <thead>
-                                <tr>
-                                    <th>No.</th>
-                                    <th>NIP</th>
-                                    <th>Nama Karyawan</th>
-                                    <th>Jabatan</th>
-                                    <th>Tanggal</th>
-                                    <th>Gaji Pokok</th>
-                                    <th>Bonus Facial Request</th>
-                                    <th>Bonus Facial Non-Request</th>
-                                    <th>Total Facial</th>
-                                    <th>Total Gaji</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php
-                                $no = 1;
-                                foreach ($data as $row):
-                                ?>
-                                <tr>
-                                    <td><?php echo $no++; ?></td>
-                                    <td><?php echo $row['nip']; ?></td>
-                                    <td><?php echo $row['nama_karyawan']; ?></td>
-                                    <td><?php echo $row['jabatan']; ?></td>
-                                    <td><?php echo date('d-m-Y', strtotime($row['tanggal'])); ?></td>
-                                    <td><?php echo $row['gaji_pokok']; ?></td>
-                                    <td><?php echo $row['bonus_request_amount']; ?></td>
-                                    <td><?php echo $row['bonus_non_request_amount']; ?></td>
-                                    <td><?php echo $row['total_treatment']; ?></td>
-                                    <td><?php echo $row['total_gaji']; ?></td>
-                                </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                            <tfoot>
-                                <tr>
-                                    <th colspan="9" style="text-align: right;">Total Gaji Keseluruhan:</th>
-                                    <th><?php echo 'Rp ' . number_format($total_gaji_keseluruhan, 0, ',', '.'); ?></th>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
-                </div>
-            <?php else: ?>
-                <div class="panel-body">
-                    <p>Tidak ada data yang sesuai dengan filter yang diberikan.</p>
-                </div>
-            <?php endif; ?>
+        </div>
+
+        <div id="printableArea" class="panel panel-info">
+            <div class="panel-heading">
+                <h3 class="panel-title">Hasil Perhitungan Bonus</h3>
+            </div>
+            <div class="panel-body">
+                <?php if ($karyawan && $transaksi): ?>
+                <h3>Bonus untuk <?php echo htmlspecialchars($karyawan['nama_karyawan']); ?> (NIP: <?php echo htmlspecialchars($karyawan['nip']); ?>)</h3>
+                <h3>Periode: dari <?php echo htmlspecialchars($tanggal_dari); ?> sampai <?php echo htmlspecialchars($tanggal_sampai); ?></h3>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Tanggal</th>
+                            <th>Nama Pasien</th>
+                            <th>Facial Request</th>
+                            <th>Facial Non-Request</th>
+                            <th>Total Facial</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php
+                        $total_facial_request = 0;
+                        $total_facial_non_request = 0;
+                        foreach ($transaksi as $data) {
+                            $facial_request = $data['bonus_request'];
+                            $facial_non_request = $data['bonus_non_request'];
+                            $total_facial_request += $facial_request;
+                            $total_facial_non_request += $facial_non_request;
+                            
+                            // Konversi format tanggal dari Y-m-d H:i:s ke format yang diinginkan
+                            $tanggal = new DateTime($data['tanggal']);
+                            $tanggal_formatted = $tanggal->format('d-m-Y');
+                            
+                            echo "<tr>";
+                            echo "<td>" . htmlspecialchars($tanggal_formatted) . "</td>";
+                            echo "<td>" . htmlspecialchars($data['nama_pasien']) . "</td>";
+                            echo "<td>" . htmlspecialchars($facial_request) . "</td>";
+                            echo "<td>" . htmlspecialchars($facial_non_request) . "</td>";
+                            echo "<td>" . htmlspecialchars($data['total_facial']) . "</td>";
+                            echo "</tr>";
+                        }
+                        ?>
+                        <tr>
+                            <td colspan="2"><strong>Total Facial</strong></td>
+                            <td><strong><?php echo $total_facial_request; ?></strong></td>
+                            <td><strong><?php echo $total_facial_non_request; ?></strong></td>
+                            <td><strong><?php echo $total_facial_request + $total_facial_non_request; ?></strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <h4>Total Bonus:</h4>
+                <p>Facial Request: <?php echo $total_facial_request; ?> x Rp<?php echo number_format($ketentuan_bonus['bonus_request']); ?> = Rp<?php echo number_format($total_facial_request * $ketentuan_bonus['bonus_request']); ?></p>
+                <p>Facial Non-Request: <?php echo $total_facial_non_request; ?> x Rp<?php echo number_format($ketentuan_bonus['bonus_non_request']); ?> = Rp<?php echo number_format($total_facial_non_request * $ketentuan_bonus['bonus_non_request']); ?></p>
+                <p><strong>Total Bonus Keseluruhan: Rp<?php echo number_format(($total_facial_request * $ketentuan_bonus['bonus_request']) + ($total_facial_non_request * $ketentuan_bonus['bonus_non_request'])); ?></strong></p>
+                <p><strong>Gaji Pokok: Rp<?php echo number_format($gaji_pokok); ?></strong></p>
+                <p><strong>Total Gaji dan Bonus: Rp<?php echo number_format($gaji_pokok + ($total_facial_request * $ketentuan_bonus['bonus_request']) + ($total_facial_non_request * $ketentuan_bonus['bonus_non_request'])); ?></strong></p>
+                <?php else: ?>
+                <p>Silakan pilih nama karyawan dan rentang tanggal untuk melihat bonus.</p>
+                <?php endif; ?>
+            </div>
         </div>
     </div>
 </div>
-
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-<script>
-    $(document).ready(function() {
-        $('#nama_karyawan').keyup(function() {
-            var query = $(this).val();
-            if (query != '') {
-                $.ajax({
-                    url: "search.php",
-                    method: "POST",
-                    data: {
-                        query: query
-                    },
-                    success: function(data) {
-                        $('#rekomendasi-nama').fadeIn();
-                        $('#rekomendasi-nama').html(data);
-                    }
-                });
-            } else {
-                $('#rekomendasi-nama').fadeOut();
-            }
-        });
-
-        $(document).on('click', '.rekomendasi-item', function() {
-            $('#nama_karyawan').val($(this).text());
-            $('#rekomendasi-nama').fadeOut();
-        });
-    });
-</script>
-
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
 </body>
 </html>
+
+
+<?php
+// Tutup koneksi
+$conn->close();
+?>

@@ -1,0 +1,68 @@
+/* Mengubah warna dasar teks */
+body {
+    color: #000000; /* Warna hijau */
+    background-color:#fafafa;
+}
+
+/* Mengubah warna latar belakang elemen navbar */
+.navbar-default {
+    background-color: #237d4c;
+    border-color: #237d4c;
+}
+
+.navbar-default .navbar-brand,
+.navbar-default .navbar-nav > li > a {
+    color: #000000; /* Warna teks menjadi putih */
+}
+
+.navbar-default .navbar-brand:hover,
+.navbar-default .navbar-nav > li > a:hover {
+    color: #e1c4ac; /* Warna teks saat hover */
+}
+
+/* Mengubah warna tombol menjadi hijau */
+.btn-primary {
+    background-color: #28a745;
+    border-color: #28a745;
+    color: #ffffff;
+}
+
+.btn-primary:hover {
+    background-color: #218838;
+    border-color: #1e7e34;
+}
+
+/* Mengubah warna alert success menjadi hijau */
+.alert-success {
+    background-color: #28a745;
+    border-color: #28a745;
+    color: #ffffff;
+}
+
+/* Sesuaikan warna lain yang Anda butuhkan */
+
+/* Mengubah warna default biru untuk panel-primary */
+.panel-primary {
+    border-color: #456c45; /* Warna border panel */
+}
+
+.panel-primary > .panel-heading {
+    background-color: #0f6d14; /* Warna latar belakang header panel */
+    border-color: #50ad51; /* Warna border header panel */
+    color: #ffffff; /* Warna teks header panel */
+}
+
+.panel-primary > .panel-heading .panel-title {
+    color: #ffffff; /* Warna teks judul panel */
+}
+
+.panel-primary > .panel-body {
+    background-color: #ffffff; /* Warna latar belakang isi panel */
+    color: #040404; /* Warna teks isi panel */
+}
+
+.panel-primary > .panel-footer {
+    background-color: #2b00ff; /* Warna latar belakang footer panel */
+    border-color: #2024ff; /* Warna border footer panel */
+    color: #ffffff; /* Warna teks footer panel */
+}

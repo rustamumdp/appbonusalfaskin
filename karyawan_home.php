@@ -1,3 +1,6 @@
+<?php
+$current_page = basename($_SERVER['PHP_SELF']);
+?>
 <!doctype html>
 <html lang="en">
 <head>
@@ -9,47 +12,34 @@
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
     <!-- Font Awesome CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.0/css/all.min.css">
+    <!-- Link ke file CSS custom Anda -->
+    <link rel="stylesheet" href="assets/css/style.css"> <!-- Sesuaikan path dengan lokasi style.css -->
     <!-- CSS custom -->
-    <style>
-        /* Membuat menu navbar tidak muncul di layar kecil */
-        .navbar-nav > li {
-            display: none;
-        }
-        /* Membuat menu navbar muncul di layar lebih besar dari 768px */
-        @media (min-width: 768px) {
-            .navbar-nav > li {
-                display: block;
-            }
-        }
-    </style>
+    
 </head>
 <body>
-    <nav class="navbar navbar-default">
-        <div class="container-fluid">
-            <div class="navbar-header">
-                <!-- Tombol untuk membuka/menutup navbar di layar kecil -->
-                <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
-                    <!-- Label tombol -->
-                    <span class="sr-only">Toggle navigation</span>
-                    <!-- Ikon hamburger -->
-                    <span class="icon-bar"></span>
-                    <span class="icon-bar"></span>
-                    <span class="icon-bar"></span>
-                </button>
-                <!-- Judul navbar -->
-                <a class="navbar-brand" href="#">Aplikasi Perhitungan Bonus Karyawan Alfa Skin Care</a>
-            </div>
-            <!-- Bagian isi navbar -->
-            <div id="navbar" class="navbar-collapse collapse">
-                    <ul class="nav navbar-nav">
-                    <li class="active"><a href="karyawan_home.php"><i class="fas fa-home"></i> Home</a></li>
-                    <li class="active"><a href="k_profil.php"><span class="glyphicon glyphicon-user"></span> Profil</a></li>
-                    <li class="active"><a href="k_laporan_bonus.php"><i class="fas fa-file-invoice"></i> Lihat Bonus</a></li>
-                    <li class="active"><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
-                </ul>
-            </div>
+<nav class="navbar navbar-default">
+    <div class="container-fluid">
+        <div class="navbar-header">
+            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="#">Aplikasi Perhitungan Bonus Karyawan Alfa Skin Care</a>
         </div>
-    </nav>
+        <div id="navbar" class="navbar-collapse collapse">
+            <ul class="nav navbar-nav">
+                <!-- Menu Items -->
+                <li class="<?php echo ($current_page == 'karyawan_home.php') ? 'active' : ''; ?>"><a href="karyawan_home.php"><i class="fas fa-home"></i> Home</a></li>
+                <li class="<?php echo ($current_page == 'k_laporan_bonus.php') ? 'active' : ''; ?>"><a href="k_laporan_bonus.php"><i class="fas fa-file-invoice"></i>Lihat Laporan Bonus</a></li>
+                <li class="<?php echo ($current_page == 'k_profil.php') ? 'active' : ''; ?>"><a href="k_profil.php"><i class="fas fa-user"></i> Profil</a></li>
+                <li><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
     <!-- Konten utama -->
     <div class="container">
     <div class="jumbotron" style="background-color: #f8f9fa;">

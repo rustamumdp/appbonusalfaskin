@@ -7,7 +7,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $nama_lengkap = $_POST['nama_lengkap'];
     $role = $_POST['role']; // Ambil nilai role dari form
 
-    $sql = "INSERT INTO admin (username, password, nama_lengkap, role) VALUES (?, ?, ?, ?)";
+    $sql = "INSERT INTO akun_pengguna (username, password, nama_lengkap, role) VALUES (?, ?, ?, ?)";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("ssss", $username, $password, $nama_lengkap, $role);
 
@@ -34,6 +34,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Register - Aplikasi Bonus Alfa Skin Care</title>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+    <!-- Link ke file CSS custom Anda -->
+    <link rel="stylesheet" href="assets/css/style.css"> <!-- Sesuaikan path dengan lokasi style.css -->
     <style>
         html {
             position: relative;

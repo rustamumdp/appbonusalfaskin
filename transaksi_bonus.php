@@ -1,3 +1,4 @@
+<!-- transaksi_bonus.php -->
 <?php
 include 'koneksi.php';
 session_start();
@@ -90,6 +91,8 @@ $current_page = basename($_SERVER['PHP_SELF']);
 <head>
     <title>Transaksi Bonus</title>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+    <!-- Link ke file CSS custom Anda -->
+    <link rel="stylesheet" href="assets/css/style.css"> <!-- Sesuaikan path dengan lokasi style.css -->
 </head>
 <body>
 <nav class="navbar navbar-default">

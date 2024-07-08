@@ -83,6 +83,8 @@ $current_page = basename($_SERVER['PHP_SELF']);
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Hitung Bonus Karyawan</title>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+    <!-- Link ke file CSS custom Anda -->
+    <link rel="stylesheet" href="assets/css/style.css"> <!-- Sesuaikan path dengan lokasi style.css -->
 </head>
 <body>
 <nav class="navbar navbar-default">
@@ -201,7 +203,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
                     <p><strong>Gaji Pokok: Rp<?php echo number_format($gaji_pokok); ?></strong></p>
                     <p><strong>Total Gaji dan Bonus: Rp<?php echo number_format($gaji_pokok + ($total_facial_request * $ketentuan_bonus['bonus_request']) + ($total_facial_non_request * $ketentuan_bonus['bonus_non_request'])); ?></strong></p>
                     <?php else: ?>
-                    <p>Silakan pilih NIP karyawan dan rentang tanggal untuk melihat bonus.</p>
+                    <p>Silakan pilih nama karyawan dan rentang tanggal untuk melihat bonus.</p>
                     <?php endif; ?>
                 </div>
             </div>

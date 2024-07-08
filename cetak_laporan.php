@@ -1,8 +1,8 @@
 <?php
 include 'koneksi.php';
 
-$tanggal_mulai = isset($_GET['tanggal_mulai']) ? $_GET['tanggal_mulai'] : '';
-$tanggal_selesai = isset($_GET['tanggal_selesai']) ? $_GET['tanggal_selesai'] : '';
+$tanggal_dari = isset($_GET['tanggal_dari']) ? $_GET['tanggal_dari'] : '';
+$tanggal_sampai = isset($_GET['tanggal_sampai']) ? $_GET['tanggal_sampai'] : '';
 $nama_karyawan = isset($_GET['nama_karyawan']) ? $_GET['nama_karyawan'] : '';
 
 // Mapping gaji pokok berdasarkan jabatan
@@ -19,8 +19,8 @@ $sql = "SELECT k.nip, k.nama_karyawan, k.jabatan, g.tanggal, g.bonus_request, g.
 
 // Menambahkan kondisi query jika ada filter
 $conditions = [];
-if ($tanggal_mulai && $tanggal_selesai) {
-    $conditions[] = "g.tanggal BETWEEN '$tanggal_mulai' AND '$tanggal_selesai'";
+if ($tanggal_dari && $tanggal_sampai) {
+    $conditions[] = "g.tanggal BETWEEN '$tanggal_dari' AND '$tanggal_sampai'";
 }
 if ($nama_karyawan) {
     $conditions[] = "k.nama_karyawan LIKE '%$nama_karyawan%'";
@@ -121,7 +121,7 @@ if ($result->num_rows > 0) {
         </div>
         <div class="row">
             <div class="col-xs-12">
-                <p><strong>Periode:</strong> <?php echo ($tanggal_mulai && $tanggal_selesai) ? date('d-m-Y', strtotime($tanggal_mulai)) . ' s/d ' . date('d-m-Y', strtotime($tanggal_selesai)) : 'Semua periode'; ?></p>
+                <p><strong>Periode:</strong> <?php echo ($tanggal_dari && $tanggal_sampai) ? date('d-m-Y', strtotime($tanggal_dari)) . ' s/d ' . date('d-m-Y', strtotime($tanggal_sampai)) : 'Semua periode'; ?></p>
                 <p><strong>Nama Karyawan:</strong> <?php echo $nama_karyawan ?: 'Semua karyawan'; ?></p>
             </div>
         </div>
