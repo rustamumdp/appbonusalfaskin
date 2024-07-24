@@ -10,10 +10,14 @@ function getCurrentTurnNIP($conn) {
     $sql = "
         SELECT k.nip 
         FROM karyawan k 
-        LEFT JOIN transaksi_bonus t 
+        LEFT JOIN (
+            SELECT nip 
+            FROM transaksi_bonus 
+            WHERE jenis_facial = 'non_request' 
+            AND tanggal = ?
+            GROUP BY nip
+        ) t 
         ON k.nip = t.nip 
-        AND t.jenis_facial = 'non_request' 
-        AND t.tanggal = ?
         WHERE t.nip IS NULL 
         ORDER BY k.urutan ASC 
         LIMIT 1";
@@ -23,6 +27,7 @@ function getCurrentTurnNIP($conn) {
     $stmt->execute();
     $stmt->bind_result($nip);
     if ($stmt->fetch()) {
+        $stmt->close();
         return $nip;
     }
     $stmt->close();
@@ -31,10 +36,14 @@ function getCurrentTurnNIP($conn) {
     $sql = "
         SELECT k.nip 
         FROM karyawan k 
-        LEFT JOIN transaksi_bonus t 
+        LEFT JOIN (
+            SELECT nip, MAX(tanggal) as last_date
+            FROM transaksi_bonus 
+            WHERE jenis_facial = 'non_request' 
+            GROUP BY nip
+        ) t 
         ON k.nip = t.nip 
-        AND t.jenis_facial = 'non_request' 
-        ORDER BY MAX(t.tanggal) ASC, k.urutan ASC 
+        ORDER BY t.last_date ASC, k.urutan ASC 
         LIMIT 1";
 
     $stmt = $conn->prepare($sql);
@@ -71,16 +80,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $stmt->bind_param("is", $urutan, $nip);
             $stmt->execute();
         }
+        $stmt->close();
         
+        // Redirect dengan pesan sukses
         $_SESSION['message'] = "Urutan karyawan berhasil diperbarui.";
-    } else {
-        $_SESSION['error'] = "Terjadi kesalahan dalam pengiriman data.";
+
+        header("Location: " . $_SERVER['PHP_SELF']);
+        exit();
     }
-    
-    // Refresh halaman untuk menghindari pengiriman ulang form
-    header("Location: " . $_SERVER['PHP_SELF']);
-    exit();
 }
+
 $current_page = basename($_SERVER['PHP_SELF']);
 ?>
 <!DOCTYPE html>
@@ -97,7 +106,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
             cursor: move;
         }
         .current-turn {
-            background-color: #dff0d8; /* Hijau terang */
+            background-color: #d9edf7; /* Biru terang */
             font-weight: bold;
         }
     </style>
@@ -164,8 +173,8 @@ $current_page = basename($_SERVER['PHP_SELF']);
                     <?php
                     while ($row = $result->fetch_assoc()) {
                         // Tambahkan class "current-turn" jika NIP karyawan saat ini sesuai dengan $currentTurnNIP
-                        $class = ($row['nip'] == $currentTurnNIP) ? 'class="current-turn"' : '';
-                        echo "<tr $class>";
+                        $class = ($row['nip'] == $currentTurnNIP) ? 'current-turn' : '';
+                        echo "<tr class='$class'>";
                         echo "<td class='drag-handle'>" . htmlspecialchars($row["urutan"]) . "</td>";
                         echo "<td><input type='hidden' name='nip[]' value='" . htmlspecialchars($row["nip"]) . "'>" . htmlspecialchars($row["nip"]) . "</td>";
                         echo "<td>" . htmlspecialchars($row["nama_karyawan"]) . "</td>";
@@ -177,19 +186,20 @@ $current_page = basename($_SERVER['PHP_SELF']);
             <button type="submit" class="btn btn-primary">Update Urutan</button>
         </form>
     </div>
-
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-ui/1.12.1/jquery-ui.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/js/all.min.js"></script>
     <script>
-        $(function() {
-            // Menambahkan fitur drag-and-drop pada tabel
+        $(document).ready(function(){
+            // Menggunakan jQuery UI untuk mengaktifkan fitur drag and drop pada tabel
             $("#karyawan-table tbody").sortable({
-                handle: ".drag-handle",
+                handle: '.drag-handle',
+                placeholder: 'sortable-placeholder',
                 update: function(event, ui) {
-                    // Mengubah urutan nomor setelah drag-and-drop
-                    $("#karyawan-table tbody tr").each(function(index) {
-                        $(this).find("td:first").text(index + 1);
+                    // Perbarui urutan input tersembunyi setelah elemen di drag and drop
+                    $('#karyawan-table tbody tr').each(function(index){
+                        $(this).find('input[name="nip[]"]').val($(this).index() + 1);
                     });
                 }
             }).disableSelection();

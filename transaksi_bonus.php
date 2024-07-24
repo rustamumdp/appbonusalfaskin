@@ -1,4 +1,3 @@
-<!-- transaksi_bonus.php -->
 <?php
 include 'koneksi.php';
 session_start();
@@ -42,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 function pilihKaryawanNonRequest($conn, $tanggal) {
     // 1. Cek karyawan yang belum menangani transaksi non-request hari ini
     $sql = "
-        SELECT k.nip 
+        SELECT k.nip, k.nama_karyawan 
         FROM karyawan k 
         LEFT JOIN transaksi_bonus t 
         ON k.nip = t.nip 
@@ -55,29 +54,34 @@ function pilihKaryawanNonRequest($conn, $tanggal) {
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("s", $tanggal);
     $stmt->execute();
-    $stmt->bind_result($nip);
+    $stmt->bind_result($nip, $nama_karyawan);
     if ($stmt->fetch()) {
-        return $nip;
+        $stmt->close();
+        return ['nip' => $nip, 'nama_karyawan' => $nama_karyawan];
     }
     $stmt->close();
 
     // 2. Jika semua karyawan sudah menangani transaksi non-request hari ini, pilih yang sudah paling lama tidak menangani
     $sql = "
-        SELECT k.nip 
+        SELECT k.nip, k.nama_karyawan 
         FROM karyawan k 
-        LEFT JOIN transaksi_bonus t 
+        LEFT JOIN (
+            SELECT nip, MAX(tanggal) as last_date
+            FROM transaksi_bonus 
+            WHERE jenis_facial = 'non_request' 
+            GROUP BY nip
+        ) t 
         ON k.nip = t.nip 
-        AND t.jenis_facial = 'non_request' 
-        ORDER BY MAX(t.tanggal) ASC, k.urutan ASC 
+        ORDER BY t.last_date ASC, k.urutan ASC 
         LIMIT 1";
 
     $stmt = $conn->prepare($sql);
     $stmt->execute();
-    $stmt->bind_result($nip);
+    $stmt->bind_result($nip, $nama_karyawan);
     $stmt->fetch();
     $stmt->close();
 
-    return $nip;
+    return ['nip' => $nip, 'nama_karyawan' => $nama_karyawan];
 }
 
 // Ambil data karyawan untuk form request
@@ -122,70 +126,46 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </div>
     </div>
 </nav>
-    <div class="container">
-        <h2>Transaksi Bonus</h2>
-        <form method="post" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>">
-            <div class="form-group">
-                <label for="nama_pasien">Nama Pasien:</label>
-                <input type="text" class="form-control" id="nama_pasien" name="nama_pasien" required>
-            </div>
-            <div class="form-group">
-                <label for="jenis_facial">Jenis Facial:</label>
-                <select class="form-control" id="jenis_facial" name="jenis_facial" required>
-                    <option value="" disabled selected>Pilih</option>
-                    <option value="request">Facial Request</option>
-                    <option value="non_request">Facial Non-Request</option>
-                </select>
-            </div>
+<div class="container">
+    <h2>Transaksi Bonus</h2>
+    <form method="post" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>">
+        <div class="form-group">
+            <label for="nama_pasien">Nama Pasien:</label>
+            <input type="text" class="form-control" id="nama_pasien" name="nama_pasien" required>
+        </div>
+        <div class="form-group">
+            <label for="jenis_facial">Jenis Facial:</label>
+            <select class="form-control" id="jenis_facial" name="jenis_facial" required>
+                <option value="" disabled selected>Pilih</option>
+                <option value="request">Facial Request</option>
+                <option value="non_request">Facial Non-Request</option>
+            </select>
+        </div>
 
-            <div class="form-group">
-                <label for="nama_karyawan">Nama Karyawan:</label>
-                <select class="form-control" id="nama_karyawan" name="nama_karyawan" required>
-                    <option value="" disabled selected>Pilih</option>
-                    <?php
-                    // Tampilkan pilihan karyawan dari hasil query
-                    if ($result_karyawan->num_rows > 0) {
-                        while ($row = $result_karyawan->fetch_assoc()) {
-                            echo "<option value='" . $row['nip'] . "'>" . $row['nama_karyawan'] . "</option>";
-                        }
+        <div class="form-group">
+            <label for="nama_karyawan">Nama Karyawan:</label>
+            <select class="form-control" id="nama_karyawan" name="nama_karyawan" required <?php echo ($jenis_facial == 'non_request') ? 'disabled' : ''; ?>>
+                <option value="" disabled selected>Pilih</option>
+                <?php
+                // Tampilkan pilihan karyawan dari hasil query
+                if ($result_karyawan->num_rows > 0) {
+                    while ($row = $result_karyawan->fetch_assoc()) {
+                        echo "<option value='" . $row['nip'] . "'>" . $row['nama_karyawan'] . "</option>";
                     }
-                    ?>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="tanggal">Tanggal Transaksi:</label>
-                <input type="date" class="form-control" id="tanggal" name="tanggal" required>
-            </div>
-            <button type="submit" class="btn btn-primary">Simpan Transaksi</button>
-        </form>
-    </div>
-
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-    <script>
-        $(document).ready(function() {
-            // Set tanggal saat ini secara otomatis
-            var now = new Date();
-            var day = ("0" + now.getDate()).slice(-2);
-            var month = ("0" + (now.getMonth() + 1)).slice(-2);
-            var nowFormatted = now.getFullYear() + "-" + month + "-" + day;
-            $('#tanggal').val(nowFormatted);
-
-            $('#jenis_facial').change(function() {
-                if ($(this).val() == 'non_request') {
-                    // Untuk non-request, karyawan dipilih otomatis
-                    $('#nama_karyawan').attr('disabled', true);
-                    var nipNonRequest = <?php echo json_encode(pilihKaryawanNonRequest($conn, date('Y-m-d'))); ?>;
-                    $('#nama_karyawan').val(nipNonRequest);
-                } else {
-                    // Untuk request, karyawan dipilih oleh user
-                    $('#nama_karyawan').attr('disabled', false);
                 }
-            });
+                ?>
+            </select>
+        </div>
 
-            // Trigger change untuk inisialisasi
-            $('#jenis_facial').trigger('change');
-        });
-    </script>
+        <div class="form-group">
+            <label for="tanggal">Tanggal Transaksi:</label>
+            <input type="date" class="form-control" id="tanggal" name="tanggal" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Simpan Transaksi</button>
+    </form>
+</div>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
 </body>
 </html>
